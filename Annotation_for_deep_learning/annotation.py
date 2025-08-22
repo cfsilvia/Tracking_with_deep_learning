@@ -24,6 +24,7 @@ from tkinter import messagebox
 from natsort import natsorted
 from auxiliary import load_labels_files
 from qtpy.QtWidgets import QFileDialog
+import yaml
 
 COLOR_CYCLE = [
     '#1f77b4',
@@ -304,6 +305,52 @@ def arrange(shape,labels,points,rect,PATH_FOLDER):
     objectmouse.ConverionPandastoText(PATH_FOLDER,shape,IM_PATH)
    
     a = 1
+    
+'''
+output: create yaml file if it isn't exist
+'''
+def create_yaml_file(PATH_FOLDER, number_keypoints):
+    file_path = os.path.join(PATH_FOLDER, "conf_pose.yaml")
+
+    if not os.path.exists(file_path):
+      config = {
+          "path" : PATH_FOLDER,
+          "train" : "images/train",
+          "val"  : "images/val",
+          "kpt_shape" : [number_keypoints, 3], # number of keypoints, number of dims
+           # "flip_idx": [0,2,1,3,4],  # uncomment if needed
+           "names": {
+               0: "blind_mole"
+            }
+         } 
+      
+      with open(file_path, "w") as f:
+          yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+          print(f"YAML file created at: {file_path}")
+    else:
+        print("File does not exist:", file_path)
+
+         
+@magicgui(call_button='Save Data')
+def my_widget1(layer: napari.layers.Points,array:ImageData,layerShape:napari.layers.Shapes):
+#def my_widget1():
+       # rect = array
+
+
+       
+       shape = SHAPE_STACK
+       labels = layer.properties
+        
+       points = layer.data
+       rect = layerShape.data
+       
+       arrange(shape,labels['label'],points,rect,PATH_FOLDER)
+
+       #create a yaml file for later use if it is not exist inside the path folder
+       create_yaml_file(PATH_FOLDER, len(np.unique(labels['label'])))
+      
+       return 0
+
         
 @magicgui(call_button='Save Data')
 def my_widget1(layer: napari.layers.Points,array:ImageData,layerShape:napari.layers.Shapes):
@@ -316,6 +363,9 @@ def my_widget1(layer: napari.layers.Points,array:ImageData,layerShape:napari.lay
        rect = layerShape.data
        
        arrange(shape,labels,points,rect,PATH_FOLDER)
+       
+       #create a yaml file for later use if it is not exist inside the path folder
+       create_yaml_file(PATH_FOLDER, len(np.unique(labels['label'])))
       
        return 0
 
