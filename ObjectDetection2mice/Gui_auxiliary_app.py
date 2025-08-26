@@ -40,22 +40,25 @@ class Gui_auxiliary_app(tk.Tk):
             
         else:
             #create yaml file
-            Gui_auxiliary_app.create_dict_parameters(self.selected_file)
+            Gui_auxiliary_app.create_dict_parameters(self.selected_file, file_path, dir)
             print(f"Selected file: {self.selected_file}")
             #open the file path in notepad
             messagebox.showinfo("Info", "Adapt the configuration to your needs.")
-            subprocess.Popen(["notepad.exe", self.selected_file])
+            subprocess.Popen(["notepad.exe",self.selected_file])
         
     @staticmethod
-    def create_dict_parameters(file):
-     config = {
+    def create_dict_parameters(file, movie_path, dir):
+      filename_with_ext = os.path.basename(movie_path)
+      filename = os.path.splitext(filename_with_ext)[0]  
+      video_output = os.path.join(dir, filename + "_with_landmarks.avi")
+      config = {
         "type_experiment" : "Blind moles from the side", #options: Mice , Blind moles from the side , Blind moles from the top
         "file_model" : ["C:/LabSoftware/Tracking_with_deep_learning/models/yoloBMR_left_BMR_combined_videos_07.07.242/weights/best.pt","C:/LabSoftware/Tracking_with_deep_learning/models/yoloBMR_right_BMR_combined_videos_26.06.242/weights/best.pt"],
-        "video_path" : "D:/Silvia/Blindmole_deep_learning/BMR2/BMR2_cfosExp_exp1_27.10.21_side.avi",
-        "video_output" : "D:/Silvia/Blindmole_deep_learning/BMR2/output/BMR2_with_landmarks.avi"  
+        "video_path" : movie_path,
+        "video_output" : video_output 
     }
      # Save dictionary as YAML file
-     with open(file, "w", encoding="utf-8") as f:
+      with open(file, "w", encoding="utf-8") as f:
          yaml.safe_dump(config, f, sort_keys=False, allow_unicode=True)
     
         
