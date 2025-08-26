@@ -2,7 +2,7 @@
 @echo off
 ::call activate [base]
 :: cmd/k prevent to close bat file
-python "X:\Users\LabSoftware\Annotation_for_deep_learning_vs2\MainGui\MainGui\Initial.py" > output.txt
+python "C:\LabSoftware\Tracking_with_deep_learning\MainGui\MainGui\Initial.py" > output.txt
 
 
 timeout /t 5 /nobreak >nul
