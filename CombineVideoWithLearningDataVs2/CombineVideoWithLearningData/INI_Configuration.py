@@ -27,18 +27,18 @@ def INI_Configuration(movie_path,video_output,excel_left, excel_right,video_fina
 
    config_object.set("output_file","video_output",video_final)
 
-   config_object.set("settings","middle_tube_y","1244")
-   config_object.set("settings","middle_tube_x","555")
-   config_object.set("settings","_upper_tube","1178")
-   config_object.set("settings","_upper_tube","1310")
+   config_object.set("settings","middle_tube_y","373")
+   config_object.set("settings","middle_tube_x","354")
+   config_object.set("settings","_upper_tube","335")
+   config_object.set("settings","_lower_tube","413")
    config_object.set("settings","_fps","60")
    config_object.set("settings","_if_Cropped","0")
-   config_object.set("settings"," _if_Plot_left","1")
-   config_object.set("settings"," _title","''")
-   config_object.set("settings"," _xstart","0")
-   config_object.set("settings"," _ystart","730")
-   config_object.set("settings"," _xend","2448")
-   config_object.set("settings"," _yend","2048")
+   config_object.set("settings","_if_Plot_left","0")
+   config_object.set("settings","_title","''")
+   config_object.set("settings","_xstart","0")
+   config_object.set("settings","_ystart","730")
+   config_object.set("settings","_xend","2448")
+   config_object.set("settings","_yend","2048")
 
    # Save the configuration file
    with open(file,"w") as file_object:
