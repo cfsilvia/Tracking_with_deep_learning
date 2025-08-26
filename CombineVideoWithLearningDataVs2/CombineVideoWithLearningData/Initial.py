@@ -10,18 +10,10 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 from TreatAudio import TreatAudio
+from Gui_auxiliary_app import select_file_with_gui
 
 
-def open_file():
-    # Create a Tkinter root widget
-    root = tk.Tk()
-    root.withdraw()  # Hide the root window
 
-    # Open the file browser dialog
-    file_path = filedialog.askopenfilename(title = "Select ini config file with all the parameters")
-
-
-    return file_path
 
 def main():
     #%% USER DATAt
@@ -43,7 +35,7 @@ def main():
     
     #define yaml path
     #file_path = 'D:/Ragad/conf-combination-video-data_8_7_21_vs2.ini'
-    file_path = open_file()
+    file_path = select_file_with_gui()
     config = configparser.ConfigParser()
     config.read(file_path)
     
