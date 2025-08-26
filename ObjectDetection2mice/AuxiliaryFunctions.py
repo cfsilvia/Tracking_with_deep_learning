@@ -136,7 +136,7 @@ def add_points_on_image(image, keypoints):
       if center[0] == 0 and center[1] == 0:
           print("not draw keypoint")
       else:
-         cv2.circle(overlay,center, radius = 10, color = color_r, thickness = -1)
+         cv2.circle(overlay,center, radius = 6, color = color_r, thickness = -1) #it was 10
       
       index += 1
     return overlay

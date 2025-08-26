@@ -36,7 +36,7 @@ class Gui_auxiliary_app(tk.Tk):
             print(f"Selected file: {self.selected_file}")
             #open the file path in notepad
             messagebox.showinfo("Info", "Adapt the configuration to your needs.")
-            subprocess.Popen(["notepad.exe", self.selected_file])
+            subprocess.run(["notepad.exe", self.selected_file])
             
         else:
             #create yaml file
@@ -44,7 +44,8 @@ class Gui_auxiliary_app(tk.Tk):
             print(f"Selected file: {self.selected_file}")
             #open the file path in notepad
             messagebox.showinfo("Info", "Adapt the configuration to your needs.")
-            subprocess.Popen(["notepad.exe",self.selected_file])
+            subprocess.run(["notepad.exe",self.selected_file])
+        self.destroy() #closes the window
         
     @staticmethod
     def create_dict_parameters(file, movie_path, dir):
