@@ -40,8 +40,8 @@ def main():
     config.read(file_path)
     
     # Access data
-    input_excel = config['Input_files']['excel file left mouse']
-    input_excel_left = config['Input_files']['excel file right mouse']
+    input_excel = config['Input_files']['excel file right mouse']
+    input_excel_left = config['Input_files']['excel file left mouse']
     input_video = config['Input_files']['input_video']
     sheet_name = config['Input_files']['sheet_name']
     original_video = config['Input_files']['original_video']

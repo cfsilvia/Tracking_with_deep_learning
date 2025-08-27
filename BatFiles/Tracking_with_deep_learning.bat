@@ -2,6 +2,9 @@
 @echo off
 ::call activate [base]
 :: cmd/k prevent to close bat file
+set conda_environment=napari-env
+set conda_path=C:\Users\Administrator\anaconda3
+call %conda_path%\Scripts\activate %conda_environment%
 python "C:\LabSoftware\Tracking_with_deep_learning\MainGui\MainGui\Initial.py" > output.txt
 
 
@@ -37,4 +40,5 @@ if "%pythonOutput%" equ "1" (
 :: Check if pythonOutput is 3
    
 pause
+call %conda_path%\Scripts\deactivate
 :: call  
