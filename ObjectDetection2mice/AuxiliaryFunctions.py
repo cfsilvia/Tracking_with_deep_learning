@@ -16,10 +16,32 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-
+COLORS = [
+    (31, 119, 180),
+    (255, 127, 14),
+    (44, 160, 44),
+    (214, 39, 40),
+    (148, 103, 189),
+    (140, 86, 75),
+    (227, 119, 194),
+    (127, 127, 127),
+    (188, 189, 34),
+    (23, 190, 207),
+    (254, 178, 76),
+    (156, 102, 31),
+    (165, 42, 42),
+    (255, 237, 160),
+    (84, 48, 5),
+    (0, 0, 0),
+    (253, 191, 111),
+    (255, 255, 255),
+    (230, 85, 13),
+    (173, 221, 142),
+    (158, 188, 218),
+]
 #COLORS = [(255,248,240),(255, 0, 0), (0, 0, 139),(30, 105, 210), (180, 105, 255),(47, 255, 173)]
-COLORS = [(8,104,172),(204,76,2),(65,174,118),(206,18,86),(129,15,124),(231,41,138),(255,255,204),(150,150,150),(35,132,67),
-          (166,189,219),(127,39,4),(0,0,0),(199,233,180),(217,72,1),(129,15,124),(2,129,138)]
+#COLORS = [(8,104,172),(204,76,2),(65,174,118),(206,18,86),(129,15,124),(231,41,138),(255,255,204),(150,150,150),(35,132,67),
+#          (166,189,219),(127,39,4),(0,0,0),(199,233,180),(217,72,1),(129,15,124),(2,129,138)]
 
 class AuxiliaryFunctions:
     def __init__(self, image, results,model,labels,skeleton):
@@ -139,6 +161,7 @@ def add_points_on_image(image, keypoints):
          cv2.circle(overlay,center, radius = 6, color = color_r, thickness = -1) #it was 10
       
       index += 1
+    plt.imshow(overlay)
     return overlay
 
 def add_skeleton_on_image(image, keypoints,labels, skeleton):
@@ -171,6 +194,7 @@ def ConvertLabelsToNumbers(labels,skeleton):
     
     for l in skeleton: #go through each tuple
        #find number in the list of first term
+       print(l)
        index1 =labels.index(l[0])
        index2 =labels.index(l[1])
        numbers.append((index1,index2))

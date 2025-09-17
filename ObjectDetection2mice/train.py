@@ -11,6 +11,10 @@ import os
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import simpledialog
+import polars as pl
+from ultralytics.engine.trainer import BaseTrainer
+
+
 
 '''
 Auxiliary functions
@@ -29,7 +33,7 @@ def get_input():
     root.withdraw()  # Hide the root window
     
     # Ask the user for input
-    user_input = simpledialog.askstring("Input", "Please give a name to your model \n as Mice_left_YOLO_7_7_2024:")
+    user_input = simpledialog.askstring("Input", "Please give a name to your model \n as BM_right_YOLO_7_8_2025:")
     
     return user_input
 
@@ -60,5 +64,8 @@ model = YOLO('yolov8l-pose.pt')
 #model.train(data='F:/YaelShammaiData/AnnotationFromYael/conf_pose.yaml', epochs=500, name = 'yoloPoseWhiteNew', workers = 0,patience=0)  # train the
 
 #model.train(data='F:/Juna/19_6_2024/TrainingDataSecondmouse/conf_pose.yaml', epochs=500, name = 'yoloBMR_Left',project='F:/Juna/models', workers = 0,patience=0)  # train the  
+#addition 
+BaseTrainer.read_results_csv = lambda self: pl.read_csv(self.csv, infer_schema_length=10000, ignore_errors=True).to_dict(as_series=False)
 
-model.train(data = file_path, epochs=500, name = model_name ,project='X:/Users/LabSoftware/ModelsForTracking_Deep_Learning', workers = 0,patience=0)  # train the  
+
+model.train(data = file_path, epochs=500, name = model_name ,project='U:/LabSoftware/ModelsForTracking_Deep_Learning', workers = 0,patience=0)  # train the  

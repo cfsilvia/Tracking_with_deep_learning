@@ -115,16 +115,17 @@ def main():
     
     elif type_experiment == 'Blind moles from the top':
     #for the up
-         labels = ['BM_snout', 'BM_mouth', 'BM_ridge_top', 'BM_ridge_middle', 'BM_ridge_bottom',
-              'BM_head_right','BM_head_left', 'BM_right_front_leg', 'BM_left_front_leg',
-             'BM_right_rear_leg','BM_left_rear_leg','BM_behind', 'BM_right_back', 'BM_left_back', 
-              'BM_centroid_left', 'BM_centroid_right']
+        # 
+         labels = ['BM_right_snout', 'BM_center_snout', 'BM_left_snout' , 'BM_mouth', 'BM_right_ridge', 'BM_left_ridge', 'BM_right_ear', 'BM_left_ear', 'BM_left_forelimb', 'BM_right_forelimb', 
+                           'BM_left_hindlimb', 'BM_right_hindlimb', 'BM_pelvic_base', 'BM_right_side', 'BM_left_side', 'BM_centr', 'BM_left_hip', 'BM_right_hip' ]
     
     #for up
-         skeleton = [('BM_snout','BM_head_right'),('BM_snout','BM_head_left'),('BM_head_right','BM_centroid_right'),('BM_centroid_right','BM_right_back'),('BM_right_back','BM_behind'),
-                 ('BM_behind','BM_left_back'),('BM_left_back','BM_centroid_left'),('BM_centroid_left','BM_head_left'),
-                ( 'BM_right_front_leg', 'BM  _left_front_leg'),('BM_right_rear_leg','BM_left_rear_leg'),('BM_snout','BM_ridge_bottom'),
-                 ('BM_ridge_bottom','BM_ridge_middle'),('BM_ridge_middle','BM_ridge_top'),('BM_snout','BM_mouth')]
+        #  skeleton = [('BM_snout','BM_head_right'),('BM_snout','BM_head_left'),('BM_head_right','BM_centroid_right'),('BM_centroid_right','BM_right_back'),('BM_right_back','BM_behind'),
+        #          ('BM_behind','BM_left_back'),('BM_left_back','BM_centroid_left'),('BM_centroid_left','BM_head_left'),
+        #         ( 'BM_right_front_leg', 'BM  _left_front_leg'),('BM_right_rear_leg','BM_left_rear_leg'),('BM_snout','BM_ridge_bottom'),
+        #          ('BM_ridge_bottom','BM_ridge_middle'),('BM_ridge_middle','BM_ridge_top'),('BM_snout','BM_mouth')]
+
+         skeleton = [('BM_right_snout','BM_left_snout'),('BM_left_snout','BM_center_snout'),('BM_center_snout','BM_right_snout'),('BM_right_hip','BM_pelvic_base'),('BM_left_hip','BM_pelvic_base'),('BM_pelvic_base','BM_centr'),('BM_right_ear','BM_right_side'),('BM_right_side','BM_right_hip'),('BM_left_ear','BM_left_side'),('BM_left_side','BM_left_hip'),('BM_center_snout','BM_right_ear'),('BM_center_snout','BM_left_ear'),('BM_right_snout','BM_right_ridge'),('BM_left_snout','BM_left_ridge')]
     
    #%%
     labels = sorted(labels)
