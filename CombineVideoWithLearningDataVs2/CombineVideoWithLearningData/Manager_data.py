@@ -25,10 +25,15 @@ class Manager_data:
        if  _if_Plot_left == 0:
        #-1- Get data to plot 
             data_to_plot = auxiliary_functions.read_excel( middle_tube_y, middle_tube_x, input_excel, sheet_name, column_name,_upper_tube, _lower_tube)
-        #-2- Create new movie from the video
+        #-2- Save data to plot 
+            data_to_save = pd.DataFrame({'Right_side':data_to_plot})
+            Manager_data.SaveData(data_to_save, input_excel, column_name)
+        
+        #-3- Create new movie from the video
             up_line = middle_tube_y - _upper_tube
             down_line = -_lower_tube  +  middle_tube_y
             Manager_data.Create_new_movie(input_video, data_to_plot,_outputVideo,_fps, up_line, down_line,_if_Cropped)
+            
        else:
         #-1- Get data to plot 
             data_to_plot = auxiliary_functions.read_excel( middle_tube_y, middle_tube_x, input_excel, sheet_name, column_name,_upper_tube, _lower_tube)
