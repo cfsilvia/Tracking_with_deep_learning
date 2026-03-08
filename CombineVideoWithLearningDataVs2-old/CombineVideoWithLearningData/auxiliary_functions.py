@@ -13,37 +13,28 @@ class auxiliary_functions:
     def read_excel(middle_tube_y, middle_tube_x, input_excel, sheet_name, column_name,_upper_tube = 0, _lower_tube = 0):
       try:
         df = pd.read_excel(input_excel, sheet_name=sheet_name)
-         #Convert comma string to list
-        if isinstance(column_name, str):
-            column_names = [c.strip() for c in column_name.split(",")]
-        else:
-            column_names = column_name
+        if column_name in df.columns:
 
-
-        # Check columns exist
-        for col in column_names:
-            if col not in df.columns:
-                print(f"Column '{col}' does not exist in sheet '{sheet_name}'.")
-                return None
-
-        print("Fitting zero no detected landmarks")
-
-        out = {}
-
-        #data_fitted_middle_y = df['BMR_Middle_y'].replace(0, np.nan)
-        data_fitted_middle_y = auxiliary_functions.fill_zeros_with_mean(df['BMR_Middle_y'])
-
-        for col in column_names:
-            data_fitted = auxiliary_functions.fill_zeros_with_mean(df[col])
-            #%% Remove data which is outside the tube # Replace values greater than the threshold with NaN 
-            data_fitted = data_fitted.mask(data_fitted > _lower_tube, np.nan) 
+            print("Fitting zero no detected landmarks")
+            #fitting non zero values
+            data_fitted = auxiliary_functions.fill_zeros_with_mean( df[column_name])
+            #%% Remove data which is outside the tube
+            # Replace values greater than the threshold with NaN
+            data_fitted = data_fitted.mask(data_fitted > _lower_tube, np.nan)
             data_fitted = data_fitted.mask(data_fitted < _upper_tube, np.nan)
-            out[col] = data_fitted_middle_y - data_fitted
-
-        result = pd.DataFrame(out)
-
-        return result[column_names[0]] if len(column_names) == 1 else result
-
+            #%%
+            #data_fitted_middle_y= auxiliary_functions.fill_zeros_with_mean( df['BMR_Middle_y'])
+            #Replace zero to nan
+           # data_fitted = df[column_name].replace(0, np.nan)
+            data_fitted_middle_y = df['BMR_Middle_y'].replace(0, np.nan)
+            #y_movement = middle_tube_y - df[column_name]
+            y_movement = data_fitted_middle_y - data_fitted
+          #calculate distance between snout and head
+            #distance = ((df['BM_snout_x'] - df['BM_head_x'] )**2 + (df['BM_snout_y'] - df['BM_head_y'] )**2)**0.5
+            return y_movement 
+        else:
+            print(f"Column '{column_name}' does not exist in the sheet '{sheet_name}'.")
+            return None
       except Exception as e:
         print(f"An error occurred while reading the Excel file: {e}")
         return None

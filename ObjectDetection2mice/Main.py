@@ -21,20 +21,24 @@ from Gui_auxiliary_app import select_file_with_gui
 
 def AnalyzeFrame(frame,annotated_frame,model,labels,skeleton):
     # Run YOLOv8 inference on the frame
-    results = model.predict(frame,conf = 0.01,workers = 0, device=0)#analyze without marking
+    # results = model.predict(frame,conf = 0.01,workers = 0, device=0)#analyze without marking
    # results = model.predict(frame,workers = 0, device = 0)
+    #results = model.predict(frame, conf=0.25, device=0, verbose=False)
+    results = model.predict(frame, conf=0.01, device=0, verbose=False)
     try:
      object_results = af.AuxiliaryFunctions(annotated_frame, results, model,labels,skeleton)
      object_results.GetResults()
     # results = model.predict(frame,conf = 0.3)
     # Visualize the results on the frame
      for r in results:
-        print(r.probs)
-        print(r.boxes)
-        print(r.keypoints)
+        # print(r.probs)
+        # print(r.boxes)
+        # print(r.keypoints)
+        pass
         
     #annotated_frame = results[0].plot()
      annotated_frame, alldata, box_data = object_results.GetImage()
+     del results #ADDD SILVIA
     except:
       annotated_frame = annotated_frame
       alldata = [float('nan')]*3*len(labels)
@@ -161,19 +165,38 @@ def main():
     
     modified_labels =  modifylabels(labels)
     
-    df0 = pd.DataFrame(columns = modified_labels)
-    df1 = pd.DataFrame(columns = modified_labels)
+    # df0 = pd.DataFrame(columns = modified_labels)
+    # df1 = pd.DataFrame(columns = modified_labels)
     
-    df0b = pd.DataFrame(columns = labels_box)
-    df1b = pd.DataFrame(columns = labels_box)
+    # df0b = pd.DataFrame(columns = labels_box)
+    # df1b = pd.DataFrame(columns = labels_box)
+
+    rows0 = []
+    rows1 = []
+
+    rows0b = []
+    rows1b = []
 ########
     cap = cv2.VideoCapture(video_path)
     # Get the frames per second (fps)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_width = int(cap.get(3))
-    frame_height = int(cap.get(4))
+    # frame_width = int(cap.get(3))
+    # frame_height = int(cap.get(4))
 
-    out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc('M','J','P','G'), fps, (frame_width,frame_height))
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    # resize factor
+    scale = 0.5
+
+    new_width = int(frame_width * scale)
+    new_height = int(frame_height * scale)
+
+
+    #out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc('M','J','P','G'), fps, (frame_width,frame_height))
+    #out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_width,frame_height))
+    out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc(*'mp4v'), fps, (new_width,new_height))
+
     frame_number = 1
     # Loop through the video frames
     while cap.isOpened():
@@ -191,7 +214,9 @@ def main():
             #    cropped_image = frame[y_start:y_end, x_start:x_end]
             #    frame = cropped_image 
             #%%
-            annotated_frame = frame.copy() #all the events will be copy here
+            # reduce frame size to half
+            frame = cv2.resize(frame, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+            annotated_frame = frame #all the events will be copy here
             index =0
             for model in Models:
                 
@@ -200,11 +225,14 @@ def main():
                #ADD
                
                if index == 0 and len(alldata)!=0: 
-                 df0.loc[len(df0)] = alldata 
-                 df0b.loc[len(df0b)] = box_data
+                #  df0.loc[len(df0)] = alldata 
+                #  df0b.loc[len(df0b)] = box_data
+                  rows0.append(alldata)
+                  rows0b.append(box_data)
                elif index == 1 and len(alldata)!=0 :
-                  df1.loc[len(df1)] = alldata
-                  df1b.loc[len(df1b)] = box_data 
+                #   
+                  rows1.append(alldata)
+                  rows1b.append(box_data)
                index +=1
                
         
@@ -230,6 +258,13 @@ def main():
     cap.release()
     out.release()
     cv2.destroyAllWindows()
+    df0 = pd.DataFrame(rows0, columns=modified_labels)
+    df1 = pd.DataFrame(rows1, columns=modified_labels)
+
+    df0b = pd.DataFrame(rows0b, columns=labels_box)
+    df1b = pd.DataFrame(rows1b, columns=labels_box)
+
+
     df0.to_excel(excel_outputr, sheet_name = sheet1)
     df0b.to_excel(excel_outputrb, sheet_name = sheet2)
     df1.to_excel(excel_outputl, sheet_name = sheet1)

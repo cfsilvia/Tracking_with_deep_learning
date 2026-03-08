@@ -26,15 +26,12 @@ class Manager_data:
        #-1- Get data to plot 
             data_to_plot = auxiliary_functions.read_excel( middle_tube_y, middle_tube_x, input_excel, sheet_name, column_name,_upper_tube, _lower_tube)
         #-2- Save data to plot 
-            data_to_save = data_to_plot
+            data_to_save = pd.DataFrame({'Right_side':data_to_plot})
             Manager_data.SaveData(data_to_save, input_excel, column_name)
         
         #-3- Create new movie from the video
             up_line = middle_tube_y - _upper_tube
             down_line = -_lower_tube  +  middle_tube_y
-
-        #if the data is normalized  with zscore
-            data_to_plot = (data_to_plot - data_to_plot.mean()) / data_to_plot.std()  
             Manager_data.Create_new_movie(input_video, data_to_plot,_outputVideo,_fps, up_line, down_line,_if_Cropped)
             
        else:
@@ -50,7 +47,7 @@ class Manager_data:
             Manager_data.Create_new_movie(input_video, data_to_plot,_outputVideo,_fps, up_line, down_line,_if_Cropped,data_to_plot_left, title,
                                           xstart, ystart, xend, yend)
              
-   def Create_new_movie(input_video, data_to_plot,_outputVideo,_fps,up_line, down_line, _if_Cropped,data_to_plot_left = None,title = None,
+   def Create_new_movie(input_video, data_to_plot,_outputVideo,_fps,up_line, down_line, _if_Cropped,data_to_plot_left = [],title = [],
                         xstart = 0, ystart = 0, xend = 0, yend = 0):
     matplotlib.pyplot. ioff()
     #counter
