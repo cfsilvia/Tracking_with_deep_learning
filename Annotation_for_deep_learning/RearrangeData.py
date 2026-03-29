@@ -39,6 +39,8 @@ class HelperFunctions:
        #  print(size_list)
          count  = 0
          filenames = natsorted(glob.glob(im_path))
+
+        
         # print(Data)
          while len(Data) > 0:
              #Remove first element of the list

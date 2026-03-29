@@ -1,9 +1,10 @@
 import os
 import pandas as pd
+import numpy as np
 
-def load_labels_files(folder, num_frames, labels, shape_stack,Path_Folder):
+def load_labels_files(folder, num_frames, labels, shape_stack,Path_Folder,shapes = None):
     """
-    Loads keypoints from YOLO-style label files without visibility.
+    Loads keypoints from YOLO-style label files with visibility.
     Falls back to default grid keypoints if files are missing.
     """
     points = []
@@ -12,6 +13,8 @@ def load_labels_files(folder, num_frames, labels, shape_stack,Path_Folder):
     box = []
     #Read the saved order of keypoint from test2 file
     saved_labels_order = read_labels(Path_Folder)
+    saved_labels_order = add_visibility_labels(saved_labels_order)
+    
 
     for frame_idx in range(0,num_frames):
         label_file = os.path.join(folder, f"{frame_idx + 1}_image.txt")
@@ -19,8 +22,8 @@ def load_labels_files(folder, num_frames, labels, shape_stack,Path_Folder):
             files_found = True
             with open(label_file, 'r') as f:
                 coords = open_split(f)
-                box = get_bounding_box(coords, shape_stack, frame_idx, box)
-                points, labels_all = get_labels(coords, labels, shape_stack, frame_idx, points, labels_all, saved_labels_order)
+                box = get_bounding_box(coords, shape_stack, frame_idx, box, shapes)
+                points, labels_all = get_labels(coords, labels, shape_stack, frame_idx, points, labels_all, saved_labels_order,shapes)
 
         else:
             continue
@@ -38,12 +41,12 @@ def open_split(f):
 
     return coords
 
-def get_bounding_box(coords, shape_stack, frame_idx, box):
+def get_bounding_box(coords, shape_stack, frame_idx, box, shapes = None):
     x_cn, y_cn, wn, hn = coords[:4]
-    w = wn * shape_stack[2]
-    h= hn * shape_stack[1]
-    x_c = x_cn * shape_stack[2]
-    y_c = y_cn * shape_stack[1]
+    w = wn * shapes[frame_idx][1]
+    h= hn * shapes[frame_idx][0]
+    x_c = x_cn * shapes[frame_idx][1]
+    y_c = y_cn * shapes[frame_idx][0]
     
     
     x1 = x_c - w / 2
@@ -63,7 +66,7 @@ def get_bounding_box(coords, shape_stack, frame_idx, box):
 
 
 
-def get_labels(coords, labels, shape_stack, frame_idx, points, labels_all, saved_labels):
+def get_labels(coords, labels, shape_stack, frame_idx, points, labels_all, saved_labels,shapes = None):
     
     for l in labels:
         #find the original labels i the saved ones
@@ -72,10 +75,29 @@ def get_labels(coords, labels, shape_stack, frame_idx, points, labels_all, saved
             if  l in col:
                 positions.append(i-1)
                 
-        x = coords[positions[0]] * shape_stack[2]  # width
-        y = coords[positions[1]] * shape_stack[1]  # height
+        x = coords[positions[0]] * shapes[frame_idx][1]  # width
+        y = coords[positions[1]] * shapes[frame_idx][0]  # height
+
+         # convert (0,0) to NaN
+        if x == 0 and y == 0:
+            x, y = np.nan, np.nan
+
         points.append([frame_idx, y, x])
         labels_all. append(l)
     return points, labels_all
     
-   
+def add_visibility_labels(saved_labels_ordered):
+    new_labels = []
+    # keep the first 5 elements as-is
+    new_labels.extend(saved_labels_ordered[:5])
+    
+    for i in range(5, len(saved_labels_ordered), 2):
+        x_label = saved_labels_ordered[i]
+        y_label = saved_labels_ordered[i + 1]
+        
+        base_name = x_label.split(' (')[0]
+        v_label = base_name + ' (v)'
+        
+        new_labels.extend([x_label, y_label, v_label])
+    
+    return new_labels

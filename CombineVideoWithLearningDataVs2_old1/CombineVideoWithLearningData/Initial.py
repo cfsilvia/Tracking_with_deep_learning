@@ -67,10 +67,12 @@ def main():
     _xend = int(config['settings']['_xend'])
     _yend = int(config['settings']['_yend'])
 
+
+  
     #%%
     
     Manager_data.Manager_data( middle_tube_y, middle_tube_x, input_excel, input_video, sheet_name, column_name, _outputVideo, _upper_tube, _lower_tube, _fps,_if_Cropped,
-                              _if_Plot_left, input_excel_left, _title,_xstart, _ystart, _xend, _yend)
+                                _if_Plot_left, input_excel_left, _title,_xstart, _ystart, _xend, _yend)
     instance_audio = TreatAudio(original_video,_outputVideo)
     instance_audio()
 

@@ -25,6 +25,7 @@ from natsort import natsorted
 from auxiliary import load_labels_files
 from qtpy.QtWidgets import QFileDialog
 import yaml
+import imageio.v3 as iio
 
 COLOR_CYCLE = [
     '#1f77b4',
@@ -138,6 +139,8 @@ def point_annotator(
     PATH_FOLDER = path
     IM_PATH = im_path
     #function to read the images
+   # PadImages_save(im_path) #pad if the images are not the same size
+
     stack = LoadImages(im_path)
     # LABELS = labels
     # stack = imread(im_path)
@@ -198,7 +201,7 @@ def point_annotator(
     edge_width=1,
     edge_width_is_relative=True,
     symbol='o',
-    size=30,
+    size=15,
     ndim=3,
     name="keypoints",
 )
@@ -241,6 +244,9 @@ def point_annotator(
     viewer.window.add_dock_widget(widget4,area='right')
     viewer.window.add_dock_widget(widget5,area='right')
     viewer.window.add_dock_widget(widget6, area = 'right')
+    viewer.window.add_dock_widget(widget_split, area='right')
+    viewer.window.add_dock_widget(widget_split_left_text, area='right')
+   # viewer.window.add_dock_widget(widget_split_right_text, area='right')    
     
     napari.run()
 
@@ -371,11 +377,16 @@ def my_widget1(layer: napari.layers.Points,array:ImageData,layerShape:napari.lay
 
 @magicgui(call_button="Load old annotations")   
 def widget6(layer: napari.layers.Points,layerShape:napari.layers.Shapes):
-    folder_selected = QFileDialog.getExistingDirectory(None,'Select folder with label without visibility .txt files')
+    folder_selected = QFileDialog.getExistingDirectory(None,'Select folder with label with visibility .txt files')
     if not folder_selected:
         print("No folder selected.")
         return
-    box, points, labels_all = load_labels_files(folder_selected, SHAPE_STACK[0], LABELS, SHAPE_STACK, PATH_FOLDER)
+    filenames = natsorted(glob.glob(IM_PATH))
+
+    # Read all shapes
+    shapes = [imread(fn).shape for fn in filenames]
+
+    box, points, labels_all = load_labels_files(folder_selected, SHAPE_STACK[0], LABELS, SHAPE_STACK, PATH_FOLDER,shapes)
     #clear existing points
     layer.data = np.array(points)
     layerShape.data = np.array(box)
@@ -451,6 +462,141 @@ def widget5( ):
         object_visibility = TIVIA.AddVisibility(f,current_folder_name)
         object_visibility()
 
+'''
+add a button to split images and reorder the text information widget_split
+'''
+@magicgui(call_button='split images left and right')
+def widget_split():
+    filenames = natsorted(glob.glob(IM_PATH))
+    for fn in filenames:
+        img = imread(fn)
+        base = os.path.basename(fn)
+        split_x = get_split_position(img, base)
+        left = img[:, :split_x]
+        right = img[:, split_x:]
+ 
+        iio.imwrite(os.path.join(PATH_FOLDER, f"left_{base}"), left)
+        iio.imwrite(os.path.join(PATH_FOLDER, f"right_{base}"), right)
+
+#auxiliary function
+def get_split_position(img, base):
+    h,w = img.shape[:2]
+    
+    if h==2000 and w==2000:
+        split_x = 504
+    else:
+        split_x = 828
+
+    return split_x
+    
+'''
+add button to arrange left from split images
+'''
+@magicgui(call_button='txt file for left split images')
+def widget_split_left_text():
+    filenames = natsorted(glob.glob(IM_PATH))
+    for fn in filenames:
+        img = imread(fn)
+        base = os.path.basename(fn)
+
+        txt_path = os.path.join(PATH_FOLDER, "labels", "train", base.replace(".png", ".txt"))
+
+        split_x = get_split_position(img, base)
+
+        out_path = os.path.join(PATH_FOLDER, "labels", "train",f"left_{base.replace('.png','.txt')}")
+        process_left_from_txt(txt_path, img, split_x, out_path)
+
+    print("✅ LEFT labels updated from existing YOLO")
+
+
+def process_left_from_txt(txt_path, img, split_x, out_path):
+    h, w = img.shape[:2]
+
+    # read
+    cls, cx, cy, bw, bh, kpts = read_yolo_pose(txt_path)
+
+    # denormalize
+    cx, cy, bw, bh, keypoints = denormalize(cx, cy, bw, bh, kpts, w, h)
+
+    # split LEFT
+    cx, cy, bw, bh, keypoints = split_left_yolo(cx, cy, bw, bh, keypoints, split_x)
+
+    # normalize
+    cx, cy, bw, bh, kpts_norm = normalize_left(cx, cy, bw, bh, keypoints, split_x, h)
+
+    # save
+    save_yolo_pose(cls, cx, cy, bw, bh, kpts_norm, out_path)
+
+
+def read_yolo_pose(path):
+    with open(path, "r") as f:
+        line = f.readline().strip().split()
+
+    cls = int(line[0])
+    cx, cy, bw, bh = map(float, line[1:5])
+
+    kpts = list(map(float, line[5:]))
+
+    return cls, cx, cy, bw, bh, kpts
+
+def denormalize(cx, cy, bw, bh, kpts, w, h):
+    cx *= w
+    cy *= h
+    bw *= w
+    bh *= h
+
+    keypoints = []
+    for i in range(0, len(kpts), 3):
+        x = kpts[i] * w
+        y = kpts[i+1] * h
+        v = kpts[i+2]
+        keypoints.append([x, y, v])
+
+    return cx, cy, bw, bh, keypoints
+
+def split_left_yolo(cx, cy, bw, bh, keypoints, split_x):
+    # bounding box corners
+    x1 = cx - bw/2
+    x2 = cx + bw/2
+
+    # clip to LEFT
+    x1 = max(0, x1)
+    x2 = min(split_x, x2)
+
+    new_bw = x2 - x1
+    new_cx = (x1 + x2) / 2
+
+    # filter keypoints
+    new_kpts = []
+    for x, y, v in keypoints:
+        if x < split_x and not np.isnan(x):
+            new_kpts.append([x, y, v])
+        else:
+            new_kpts.append([0, 0, 0])  # YOLO expects placeholder
+
+    return new_cx, cy, new_bw, bh, new_kpts
+
+def normalize_left(cx, cy, bw, bh, keypoints, split_x, h):
+    cx /= split_x
+    bw /= split_x
+    cy /= h
+    bh /= h
+
+    kpts_norm = []
+    for x, y, v in keypoints:
+        if v == 0:
+            kpts_norm.extend([0, 0, 0])
+        else:
+            kpts_norm.extend([x / split_x, y / h, v])
+
+    return cx, cy, bw, bh, kpts_norm
+
+def save_yolo_pose(cls, cx, cy, bw, bh, kpts, path):
+    line = f"{cls} {cx} {cy} {bw} {bh} " + " ".join(map(str, kpts))
+    with open(path, "w") as f:
+        f.write(line + "\n")
+
+
 # '''
 # Add menu for object detection
 # '''
@@ -471,6 +617,32 @@ def widget5( ):
 #        return 0
 
 #Load the pictures as a stack
+def PadImages_save(im_path):
+    filenames = natsorted(glob.glob(im_path))
+
+    # Read all shapes
+    shapes = [imread(fn).shape for fn in filenames]
+     # 🔹 Check if all shapes are identical
+    if len(set(shapes)) == 1:
+        print("All images already have the same shape. Skipping padding.")
+        return
+
+    max_y = max(s[0] for s in shapes)
+    max_x = max(s[1] for s in shapes)
+    target_shape = (max_y, max_x)
+
+    #padding
+    for fn in filenames:
+        img = imread(fn)
+        pad_y = target_shape[0] - img.shape[0]
+        pad_x = target_shape[1] - img.shape[1]
+        padded = np.pad(img, ((0, pad_y), (0, pad_x), (0, 0)), mode='constant')
+   
+        # decide where to save-rewrite the file
+        out_path = fn
+        iio.imwrite(out_path, padded)
+
+#Load the pictures as a stack
 def LoadImages(im_path):
     filenames = natsorted(glob.glob(im_path))
    # read the first file to get the shape and dtype
@@ -487,6 +659,7 @@ def LoadImages(im_path):
     stack = da.stack(dask_arrays, axis=0)
     
     return stack
+
 
 
 '''
