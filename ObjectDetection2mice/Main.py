@@ -19,14 +19,24 @@ from Gui_auxiliary_app import select_file_with_gui
 
         
 
-def AnalyzeFrame(frame,annotated_frame,model,labels,skeleton):
+def AnalyzeFrame(frame,annotated_frame,model,labels,skeleton, x_crop):
+    # Apply CLAHE for contrast enhancement
+    # lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    # lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+    # frame = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    
     # Run YOLOv8 inference on the frame
     # results = model.predict(frame,conf = 0.01,workers = 0, device=0)#analyze without marking
    # results = model.predict(frame,workers = 0, device = 0)
     #results = model.predict(frame, conf=0.25, device=0, verbose=False)
-    results = model.predict(frame, conf=0.01, device=0, verbose=False)
+    #before prediction add to  each frame contrast enhancement
+
+     results = model.predict(frame, conf=0.1, device=0, verbose=False, iou=0.5)
+   # results = model.predict(frame, conf=0.01, device=0, verbose=False)
+    #results = model.track(frame, conf=0.1, device=0, verbose=False, iou=0.5, persist=True)
     try:
-     object_results = af.AuxiliaryFunctions(annotated_frame, results, model,labels,skeleton)
+     object_results = af.AuxiliaryFunctions(annotated_frame, results, model,labels,skeleton, x_crop)
      object_results.GetResults()
     # results = model.predict(frame,conf = 0.3)
     # Visualize the results on the frame
@@ -36,14 +46,15 @@ def AnalyzeFrame(frame,annotated_frame,model,labels,skeleton):
         # print(r.keypoints)
         pass
         
-    #annotated_frame = results[0].plot()
-     annotated_frame, alldata, box_data = object_results.GetImage()
+     annotated_frame, left_alldata, left_box_data, right_alldata, right_box_data = object_results.GetImage() 
      del results #ADDD SILVIA
     except:
       annotated_frame = annotated_frame
-      alldata = [float('nan')]*3*len(labels)
-      box_data = [float('nan')]*5
-    return annotated_frame, alldata, box_data
+      left_alldata = [float('nan')] * (len(labels) * 3)
+      left_box_data = [float('nan')] * 5
+      right_alldata = [float('nan')] * (len(labels) * 3)
+      right_box_data = [float('nan')] * 5
+    return annotated_frame, left_alldata, left_box_data, right_alldata, right_box_data
 
 
 def  modifylabels(labels):
@@ -57,218 +68,184 @@ def  modifylabels(labels):
 
 
 
-def main():
- 
-    selected_file = select_file_with_gui()
-   
-    
-    with open(selected_file,'r') as file:
-       data = yaml.safe_load(file)
+def load_configuration(selected_file):
+    """Load configuration from YAML file."""
+    with open(selected_file, 'r') as file:
+        return yaml.safe_load(file)
 
 
-    type_experiment = data['type_experiment']
-    #values = ['Mice','Blind moles from the side','Blind moles from the top']  
-    number_models = len(data['file_model'])
-    Models = []
-   #%%
-    for n in range(number_models):
-      file_model = data['file_model'][n]
-      model = YOLO(file_model)
-      Models.append(model) 
-#Settings
-# Load the YOLOv8 model
-# model for the 2 blind moles  left and right
-    # model1 = YOLO('F:/Juna/19_6_2024/yoloBlindmole_allbody_vs1/weights/best.pt')
-    # model2 = YOLO('F:/Juna/19_6_2024/yoloBMR_left6/weights/best.pt') #left to do this
-    
-    # Models = [model1,model2]
-    
-# Open the video file
-    video_path = data['video_path']
-    video_output = data['video_output']
-    
-    #get path and filename
-    # Get directory and filename
-    directory = os.path.dirname(video_output)
-    filename =os.path.splitext(os.path.basename(video_output))[0]
-    
-    
-    #video_path = "F:/Juna/19_6_2024/BMR2 vs BMR5 as stimulus 8.7.21_side_CUT.avi"
-    #video_output = "F:/Juna/19_6_2024/BMR2 vs BMR5 as stimulus 8.7.21_side_CUT_YOLO_2blind_moles_5.avi"
-    #%%
+def initialize_models(file_paths):
+    """Initialize YOLO models from file paths."""
+    return [YOLO(file_path) for file_path in file_paths]
+
+
+def setup_labels_and_skeleton(type_experiment):
+    """Setup labels and skeleton based on experiment type."""
     if type_experiment == 'mice':
-       labels = ['center','ear_Left','ear_Right', 'hips_left', 'hips_right','nose', 'shoulders','tail_2','tail_Base','tail_End','tail_round'] 
-       skeleton = [('nose','ear_Left'),('nose','ear_Right'),('nose','shoulders'),('shoulders','center'),('center','hips_left'),
-                ('center','hips_right'),('center','tail_Base'),('tail_Base','tail_round'),('tail_round','tail_2')
-                ,('tail_2','tail_End')]
+        labels = ['center', 'ear_Left', 'ear_Right', 'hips_left', 'hips_right', 'nose', 
+                  'shoulders', 'tail_2', 'tail_Base', 'tail_End', 'tail_round']
+        skeleton = [('nose', 'ear_Left'), ('nose', 'ear_Right'), ('nose', 'shoulders'),
+                   ('shoulders', 'center'), ('center', 'hips_left'), ('center', 'hips_right'),
+                   ('center', 'tail_Base'), ('tail_Base', 'tail_round'), ('tail_round', 'tail_2'),
+                   ('tail_2', 'tail_End')]
     elif type_experiment == 'Blind moles from the side':
-    
-    # labels =  ['BM_snout','BM_mouth', 'BM_ridge_top', 'BM_ridge_middle', 'BM_ridge_bottom', 'BM_head',
-    #           'BM_centroid', 'BM_back', 'BM_rear_leg_1', 'BM_rear_leg_2', 'BM_front_leg_1', 'BM_front_leg_2']
-    
-   #for the  side        
-        labels = ['BM_snout', 'BM_lower_mouth', 'BM_ridge_top', 'BM_ridge_middle', 'BM_ridge_bottom', 
-               'BM_head','BM_centroid', 'BM_back', 'BM_right_rear_leg_1', 'BM_left_rear_leg_1',
-               'BM_right_front_leg_1','BM_left_front_leg_1','BM_behind', 'BM_low_behind', 'BM_below_mouth', 'BMR_Middle']
-    #for side
-        skeleton = [('BM_snout','BM_head'),('BM_head','BM_centroid'),('BM_centroid','BM_back'),('BM_back','BM_behind'),('BM_behind','BM_low_behind'),
-                ('BM_snout','BM_below_mouth'),('BM_below_mouth','BM_left_front_leg_1'),('BM_left_front_leg_1','BM_right_front_leg_1'),
-               ('BM_left_front_leg_1','BM_left_rear_leg_1'),('BM_left_rear_leg_1','BM_right_rear_leg_1'),('BM_snout','BM_ridge_bottom'),
-                ('BM_ridge_bottom','BM_ridge_middle'),('BM_ridge_middle','BM_ridge_top')]
-    
-    
+        labels = ['BM_snout', 'BM_lower_mouth', 'BM_ridge_top', 'BM_ridge_middle', 'BM_ridge_bottom',
+                 'BM_head', 'BM_centroid', 'BM_back', 'BM_right_rear_leg_1', 'BM_left_rear_leg_1',
+                 'BM_right_front_leg_1', 'BM_left_front_leg_1', 'BM_behind', 'BM_low_behind',
+                 'BM_below_mouth', 'BMR_Middle']
+        skeleton = [('BM_snout', 'BM_head'), ('BM_head', 'BM_centroid'), ('BM_centroid', 'BM_back'),
+                   ('BM_back', 'BM_behind'), ('BM_behind', 'BM_low_behind'), ('BM_snout', 'BM_below_mouth'),
+                   ('BM_below_mouth', 'BM_left_front_leg_1'), ('BM_left_front_leg_1', 'BM_right_front_leg_1'),
+                   ('BM_left_front_leg_1', 'BM_left_rear_leg_1'), ('BM_left_rear_leg_1', 'BM_right_rear_leg_1'),
+                   ('BM_snout', 'BM_ridge_bottom'), ('BM_ridge_bottom', 'BM_ridge_middle'),
+                   ('BM_ridge_middle', 'BM_ridge_top')]
     elif type_experiment == 'Blind moles from the top':
-    #for the up
-        # 
-         labels = ['BM_right_snout', 'BM_center_snout', 'BM_left_snout' , 'BM_mouth', 'BM_right_ridge', 'BM_left_ridge', 'BM_right_ear', 'BM_left_ear', 'BM_left_forelimb', 'BM_right_forelimb', 
-                           'BM_left_hindlimb', 'BM_right_hindlimb', 'BM_pelvic_base', 'BM_right_side', 'BM_left_side', 'BM_centr', 'BM_left_hip', 'BM_right_hip' ]
+        labels = ['BM_right_snout', 'BM_center_snout', 'BM_left_snout', 'BM_mouth', 'BM_right_ridge',
+                 'BM_left_ridge', 'BM_right_ear', 'BM_left_ear', 'BM_left_forelimb', 'BM_right_forelimb',
+                 'BM_left_hindlimb', 'BM_right_hindlimb', 'BM_pelvic_base', 'BM_right_side',
+                 'BM_left_side', 'BM_centr', 'BM_left_hip', 'BM_right_hip']
+        skeleton = [('BM_right_snout', 'BM_left_snout'), ('BM_left_snout', 'BM_center_snout'),
+                   ('BM_center_snout', 'BM_right_snout'), ('BM_right_hip', 'BM_pelvic_base'),
+                   ('BM_left_hip', 'BM_pelvic_base'), ('BM_pelvic_base', 'BM_centr'),
+                   ('BM_right_ear', 'BM_right_side'), ('BM_right_side', 'BM_right_hip'),
+                   ('BM_left_ear', 'BM_left_side'), ('BM_left_side', 'BM_left_hip'),
+                   ('BM_center_snout', 'BM_right_ear'), ('BM_center_snout', 'BM_left_ear'),
+                   ('BM_right_snout', 'BM_right_ridge'), ('BM_left_snout', 'BM_left_ridge')]
     
-    #for up
-        #  skeleton = [('BM_snout','BM_head_right'),('BM_snout','BM_head_left'),('BM_head_right','BM_centroid_right'),('BM_centroid_right','BM_right_back'),('BM_right_back','BM_behind'),
-        #          ('BM_behind','BM_left_back'),('BM_left_back','BM_centroid_left'),('BM_centroid_left','BM_head_left'),
-        #         ( 'BM_right_front_leg', 'BM  _left_front_leg'),('BM_right_rear_leg','BM_left_rear_leg'),('BM_snout','BM_ridge_bottom'),
-        #          ('BM_ridge_bottom','BM_ridge_middle'),('BM_ridge_middle','BM_ridge_top'),('BM_snout','BM_mouth')]
+    return sorted(labels), skeleton
 
-         skeleton = [('BM_right_snout','BM_left_snout'),('BM_left_snout','BM_center_snout'),('BM_center_snout','BM_right_snout'),('BM_right_hip','BM_pelvic_base'),('BM_left_hip','BM_pelvic_base'),('BM_pelvic_base','BM_centr'),('BM_right_ear','BM_right_side'),('BM_right_side','BM_right_hip'),('BM_left_ear','BM_left_side'),('BM_left_side','BM_left_hip'),('BM_center_snout','BM_right_ear'),('BM_center_snout','BM_left_ear'),('BM_right_snout','BM_right_ridge'),('BM_left_snout','BM_left_ridge')]
-    
-   #%%
-    labels = sorted(labels)
-    # skeleton = [('BM_snout','BM_ridge_bottom'),('BM_ridge_bottom','BM_ridge_middle'),('BM_ridge_middle','BM_ridge_top'),
-    #             ('BM_snout','BM_mouth'),('BM_snout','BM_head'),('BM_head','BM_centroid'),('BM_centroid','BM_back'),
-    #             ('BM_snout','BM_front_leg_1'),('BM_rear_leg_1','BM_rear_leg_2'),('BM_front_leg_1','BM_front_leg_2'),
-    #             ('BM_front_leg_1','BM_rear_leg_1'),('BM_front_leg_2','BM_rear_leg_2'),('BM_rear_leg_1','BM_back'),
-    #             ('BM_mouth','BM_ridge_bottom')]
-    
-    #skeleton = [('BM_snout','BM_head'),('BM_head','BM_centroid'),('BM_snout','BM_front_leg_1'),('BM_front_leg_1', 'BM_front_leg_2')]
-    #skeleton = [('BM_snout','BM_head'),('BM_snout','BM_front_leg_1'),('BM_front_leg_1', 'BM_front_leg_2'),('BM_head','BM_centroid'),('BM_centroid','BM_back')]
-    
-    
-    
-    excel_outputr = directory + '/' + filename + '_right.xlsx'
-    excel_outputrb = directory + '/' + filename + '_rightb.xlsx'
-    excel_outputl = directory + '/' + filename + '_left.xlsx'
-    excel_outputlb = directory + '/' + filename + '_leftb.xlsx'
-    
-    # excel_outputr = "F:/Juna/19_6_2024/BMR2 vs BMR5 as stimulus 8.7.21_side_CUT_YOLO_right1.xlsx"
-    # excel_outputrb = "F:/Juna/19_6_2024/BMR2 vs BMR5 as stimulus 8.7.21_side_CUT_YOLO_rightb1.xlsx"
-    # excel_outputl = "F:/Juna/19_6_2024/BMR2 vs BMR5 as stimulus 8.7.21_side_CUT_YOLO_left1.xlsx"
-    # excel_outputlb = "F:/Juna/19_6_2024/BMR2 vs BMR5 as stimulus 8.7.21_side_CUT_YOLO_leftb1.xlsx"
-   # excel_output = "X:/Users/Members/Juna/BMR2 vs BMR5 as stimulus 8.7.21_up_yoloBMR_UP4.xlsx"
-    
-    #excel_output = "X:/Users/Members/Juna/BMR10 vs BMR6 as stimulus_26.6.22_side_allbody_vs0.xlsx"
-   # excel_output1 = "F:/YaelShammaiData/AnnotationFromYael/C57 103-1mcut_Yolovs3_Black.xlsx"
-    sheet1 = 'BMR'
-    sheet2 = 'BMR_box'
-    labels_box = ['BMR_x', 'BMR_y', 'width', 'height', 'conf']
-    _if_Cropped = 1
-  #  sheet2 = 'black mouse'
-    
-    modified_labels =  modifylabels(labels)
-    
-    # df0 = pd.DataFrame(columns = modified_labels)
-    # df1 = pd.DataFrame(columns = modified_labels)
-    
-    # df0b = pd.DataFrame(columns = labels_box)
-    # df1b = pd.DataFrame(columns = labels_box)
 
-    rows0 = []
-    rows1 = []
+def setup_output_paths(directory, filename):
+    """Setup output file paths."""
+    return {
+        'right': directory + '/' + filename + '_right.xlsx',
+        'rightb': directory + '/' + filename + '_rightb.xlsx',
+        'left': directory + '/' + filename + '_left.xlsx',
+        'leftb': directory + '/' + filename + '_leftb.xlsx'
+    }
 
-    rows0b = []
-    rows1b = []
-########
+
+def setup_video_writer(video_path, video_output, scale=0.5):
+    """Setup video capture and writer objects."""
     cap = cv2.VideoCapture(video_path)
-    # Get the frames per second (fps)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    # frame_width = int(cap.get(3))
-    # frame_height = int(cap.get(4))
-
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    # resize factor
-    scale = 0.5
-
+    
     new_width = int(frame_width * scale)
     new_height = int(frame_height * scale)
+    
+    out = cv2.VideoWriter(video_output, cv2.VideoWriter_fourcc(*'mp4v'), fps, (new_width, new_height))
+    
+    return cap, out, new_width, new_height
 
 
-    #out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc('M','J','P','G'), fps, (frame_width,frame_height))
-    #out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_width,frame_height))
-    out = cv2.VideoWriter(video_output,cv2.VideoWriter_fourcc(*'mp4v'), fps, (new_width,new_height))
+def get_frame_crops(frame, crop_type, x_crop):
+    frame_w = frame.shape[1]
+    if x_crop is None:
+        cut_left = frame_w // 2
+        cut_right = cut_left
+    elif isinstance(x_crop, (list, tuple)) and len(x_crop) == 2:
+        cut_left = int(x_crop[0])
+        cut_right = int(x_crop[1])
+    else:
+        cut_left = int(x_crop)
+        cut_right = cut_left
 
+    cut_left = max(0, min(cut_left, frame_w))
+    cut_right = max(0, min(cut_right, frame_w))
+    if cut_right < cut_left:
+        cut_right = cut_left
+
+    if crop_type == 'left':
+        return [(frame[:, :cut_left], 0)]
+    if crop_type == 'right':
+        return [(frame[:, cut_right:], cut_right)]
+    return [(frame[:, :cut_left], 0), (frame[:, cut_right:], cut_right)]
+
+
+
+
+def process_video_frames(cap, out, models, labels, skeleton, modified_labels, frame_scale=0.5,x_divider = None):
+    """Process video frames through models and collect data."""
+    rows_left, rows_leftb = [], []
+    rows_right, rows_rightb = [], []
     frame_number = 1
-    # Loop through the video frames
-    while cap.isOpened():
-        # Read a frame from the video
-        success, frame = cap.read()
-        #annotated_frame = frame.copy() #all the events will be copy here
 
-        if success:
-            #crop the image
-            # Define the ROI (top-left corner and bottom-right corner)
-            x_start, y_start = 0, 730  # Top-left corner
-            x_end, y_end = 2000, 2000    # Bottom-right corner
-            
-            # if _if_Cropped == 1:
-            #    cropped_image = frame[y_start:y_end, x_start:x_end]
-            #    frame = cropped_image 
-            #%%
-            # reduce frame size to half
-            frame = cv2.resize(frame, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
-            annotated_frame = frame #all the events will be copy here
-            index =0
-            for model in Models:
-                
-               annotated_frame, alldata, box_data = AnalyzeFrame(frame,annotated_frame,model,labels,skeleton)
-               #add to a different data sheet
-               #ADD
-               
-               if index == 0 and len(alldata)!=0: 
-                #  df0.loc[len(df0)] = alldata 
-                #  df0b.loc[len(df0b)] = box_data
-                  rows0.append(alldata)
-                  rows0b.append(box_data)
-               elif index == 1 and len(alldata)!=0 :
-                #   
-                  rows1.append(alldata)
-                  rows1b.append(box_data)
-               index +=1
-               
-        
-                
-            # Break the loop if 'q' is pressed
-           
-            # Display the annotated frame
-            #cv2.imshow("YOLOv8 Inference", annotated_frame)
-            out.write(annotated_frame)
-            
-            #cv2.waitKey(1) & 0xFF == ord("q"):
-            #break
-        else:
-            # Break the loop if the end of the video is reached
+    while cap.isOpened():
+        success, frame = cap.read()
+        if not success:
             break
+
+        frame = cv2.resize(frame, None, fx=frame_scale, fy=frame_scale, interpolation=cv2.INTER_AREA)
+        annotated_frame = frame.copy()
+
+        for index, model in enumerate(models):
+            annotated_frame, left_alldata, left_box_data, right_alldata, right_box_data = AnalyzeFrame(frame, annotated_frame, model, labels, skeleton, int(x_divider*frame_scale))
+            
+            rows_left.append(left_alldata)
+            rows_leftb.append(left_box_data)
+            rows_right.append(right_alldata)
+            rows_rightb.append(right_box_data)
+
+        out.write(annotated_frame)
+        # cv2.imshow('Annotated Frame', annotated_frame)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
         frame_number += 1
         print(frame_number)
-    #save data to excel
-        #df0.to_excel(excel_output, sheet_name = sheet1)
-        #df1.to_excel(excel_output1, sheet_name = sheet2)
+
+    return rows_left, rows_leftb, rows_right, rows_rightb
+
+
+def export_to_excel(rows_left, rows_leftb, rows_right, rows_rightb, output_paths, modified_labels, labels_box):
+    """Export collected data to Excel files."""
+    sheet1 = 'BMR'
+    sheet2 = 'BMR_box'
     
-    # Release the video capture object and close the display window
+    df_left = pd.DataFrame(rows_left, columns=modified_labels)
+    df_right = pd.DataFrame(rows_right, columns=modified_labels)
+    df_leftb = pd.DataFrame(rows_leftb, columns=labels_box)
+    df_rightb = pd.DataFrame(rows_rightb, columns=labels_box)
+    
+    df_left.to_excel(output_paths['left'], sheet_name=sheet1)
+    df_leftb.to_excel(output_paths['leftb'], sheet_name=sheet2)
+    df_right.to_excel(output_paths['right'], sheet_name=sheet1)
+    df_rightb.to_excel(output_paths['rightb'], sheet_name=sheet2)
+
+
+def main():
+    selected_file = select_file_with_gui()
+    config = load_configuration(selected_file)
+    
+    type_experiment = config['type_experiment']
+    models = initialize_models(config['file_model'])
+    labels, skeleton = setup_labels_and_skeleton(type_experiment)
+    
+    video_path = config['video_path']
+    video_output = config['video_output']
+    x_divider = config['x_divider']
+    directory = os.path.dirname(video_output)
+    filename = os.path.splitext(os.path.basename(video_output))[0]
+    
+    output_paths = setup_output_paths(directory, filename)
+    modified_labels = modifylabels(labels)
+    labels_box = ['BMR_x', 'BMR_y', 'width', 'height', 'conf']
+    
+    # 
+    frame_scale = 0.5
+
+    cap, out, new_width, new_height = setup_video_writer(video_path, video_output, scale=frame_scale)
+    rows_left, rows_leftb, rows_right, rows_rightb = process_video_frames(
+        cap, out, models, labels, skeleton, modified_labels,  frame_scale = frame_scale, x_divider = x_divider
+    )
+    
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-    df0 = pd.DataFrame(rows0, columns=modified_labels)
-    df1 = pd.DataFrame(rows1, columns=modified_labels)
+    
+    export_to_excel(rows_left, rows_leftb, rows_right, rows_rightb, output_paths, modified_labels, labels_box)
 
-    df0b = pd.DataFrame(rows0b, columns=labels_box)
-    df1b = pd.DataFrame(rows1b, columns=labels_box)
-
-
-    df0.to_excel(excel_outputr, sheet_name = sheet1)
-    df0b.to_excel(excel_outputrb, sheet_name = sheet2)
-    df1.to_excel(excel_outputl, sheet_name = sheet1)
-    df1b.to_excel(excel_outputlb, sheet_name = sheet2)
 
 if __name__ == "__main__":
-    main() 
+    main()

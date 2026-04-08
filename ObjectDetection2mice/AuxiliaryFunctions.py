@@ -44,7 +44,7 @@ COLORS = [
 #          (166,189,219),(127,39,4),(0,0,0),(199,233,180),(217,72,1),(129,15,124),(2,129,138)]
 
 class AuxiliaryFunctions:
-    def __init__(self, image, results,model,labels,skeleton):
+    def __init__(self, image, results,model,labels,skeleton,x_divider):
         self._image = image
         self._results = results
         self._model = model
@@ -52,47 +52,60 @@ class AuxiliaryFunctions:
         self._skeleton = skeleton # how the points are combined
         self._finalList = []
         self._box_inf = []
+        self._x_divider = x_divider
         
         
     def GetResults(self):
-        result = self._results #take first
-        for r in result: #loop through each class
-           box = r.boxes
-           
-           b = box[0] # boxes for each class -take the box with better probability
-
-           cords = b.xyxy[0].tolist()
-           cords = [round(x) for x in cords]
-           keypoints = r.keypoints.xy[0].tolist()
-           conf_score = r.keypoints.conf[0].tolist()
-         
-           class_id = r.names[b.cls[0].item()]
-           conf = round(b.conf[0].item(), 2)
-           print("Object type:", class_id)
-          # print("Coordinates:", cords)
-           #print("Probability:", conf)
-           print(keypoints)
-           print(conf_score)
-           
-           self._finalList = FusionData(keypoints,conf_score)
-           
-           #add box information
-           self._box_inf = cords
-           self._box_inf.append(conf)
-
-           if class_id == 'black':
-                     color = (0,0,255)
-           else:
-                     color = (255,0,0)
-                     
-       # self._image = draw_bounding_box_on_image(self._image, cords, color, 4, class_id, conf)
-        self._image = add_points_on_image(self._image, keypoints)
-       # cv2.imshow("YOLOv8 Inference", self._image)
-        self._image = add_skeleton_on_image(self._image, keypoints,self._labels,self._skeleton)
-       # cv2.imshow("YOLOv8 Inference", self._image)
+        detections = []
+        for r in self._results:
+            for i, box in enumerate(r.boxes):
+                conf = box.conf[0].item()
+                cords = box.xyxy[0].tolist()
+                cords = [float(x) for x in cords]
+                center_x = (cords[0] + cords[2]) / 2
+                detections.append({
+                    'box': box,
+                    'keypoints': r.keypoints.xy[i],
+                    'conf_score': r.keypoints.conf[i],
+                    'class_id': r.names[box.cls[0].item()],
+                    'box_conf': conf,
+                    'cords': cords,
+                    'center_x': center_x
+                })
+        
+        # Separate into left and right
+        left_detections = [d for d in detections if d['center_x'] < self._x_divider]
+        right_detections = [d for d in detections if d['center_x'] >= self._x_divider]
+        
+        # Select best for each side if conf > 0.6
+        self._left_finalList = []
+        self._left_box_inf = []
+        if left_detections:
+            best_left = max(left_detections, key=lambda x: x['box_conf'])
+            if best_left['box_conf'] > 0.1:
+                keypoints = best_left['keypoints'].tolist()
+                conf_score = best_left['conf_score'].tolist()
+                cords = best_left['cords'] + [best_left['box_conf']]
+                self._left_finalList = FusionData(keypoints, conf_score)
+                self._left_box_inf = cords
+                self._image = add_points_on_image(self._image, keypoints)
+                self._image = add_skeleton_on_image(self._image, keypoints, self._labels, self._skeleton)
+        
+        self._right_finalList = []
+        self._right_box_inf = []
+        if right_detections:
+            best_right = max(right_detections, key=lambda x: x['box_conf'])
+            if best_right['box_conf'] > 0.6:
+                keypoints = best_right['keypoints'].tolist()
+                conf_score = best_right['conf_score'].tolist()
+                cords = best_right['cords'] + [best_right['box_conf']]
+                self._right_finalList = FusionData(keypoints, conf_score)
+                self._right_box_inf = cords
+                self._image = add_points_on_image(self._image, keypoints)
+                self._image = add_skeleton_on_image(self._image, keypoints, self._labels, self._skeleton)
 
     def GetImage(self):
-        return self._image,self._finalList, self._box_inf
+        return self._image, self._left_finalList, self._left_box_inf, self._right_finalList, self._right_box_inf
         
 #############
 '''

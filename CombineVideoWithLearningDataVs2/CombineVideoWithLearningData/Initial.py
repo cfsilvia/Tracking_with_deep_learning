@@ -4,7 +4,7 @@ Created on Thu Jun 13 14:40:49 2024
 
 @author: Administrator
 """
-from Manager_data import Manager_data
+from Manager_data import Config, ManagerData
 import configparser
 import tkinter as tk
 from tkinter import filedialog
@@ -68,9 +68,30 @@ def main():
     _yend = int(config['settings']['_yend'])
 
     #%%
-    
-    Manager_data.Manager_data( middle_tube_y, middle_tube_x, input_excel, input_video, sheet_name, column_name, _outputVideo, _upper_tube, _lower_tube, _fps,_if_Cropped,
-                              _if_Plot_left, input_excel_left, _title,_xstart, _ystart, _xend, _yend)
+    config = Config(
+        middle_tube_y=middle_tube_y,
+        middle_tube_x=middle_tube_x,
+        input_excel=input_excel,
+        input_video=input_video,
+        sheet_name=sheet_name,
+        column_name=column_name,
+        output_video=_outputVideo,
+        upper_tube=_upper_tube,
+        lower_tube=_lower_tube,
+        fps=_fps,
+        if_cropped=bool(_if_Cropped),
+        if_plot_left=bool(_if_Plot_left),
+        input_excel_left=input_excel_left,
+        title=_title,
+        xstart=_xstart,
+        ystart=_ystart,
+        xend=_xend,
+        yend=_yend
+    )
+
+    manager = ManagerData(config)
+    manager.process()
+
     instance_audio = TreatAudio(original_video,_outputVideo)
     instance_audio()
 

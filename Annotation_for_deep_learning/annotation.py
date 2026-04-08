@@ -26,6 +26,7 @@ from auxiliary import load_labels_files
 from qtpy.QtWidgets import QFileDialog
 import yaml
 import imageio.v3 as iio
+import split_text
 
 COLOR_CYCLE = [
     '#1f77b4',
@@ -246,7 +247,7 @@ def point_annotator(
     viewer.window.add_dock_widget(widget6, area = 'right')
     viewer.window.add_dock_widget(widget_split, area='right')
     viewer.window.add_dock_widget(widget_split_left_text, area='right')
-   # viewer.window.add_dock_widget(widget_split_right_text, area='right')    
+    viewer.window.add_dock_widget(widget_split_right_text, area='right')    
     
     napari.run()
 
@@ -513,88 +514,54 @@ def process_left_from_txt(txt_path, img, split_x, out_path):
     h, w = img.shape[:2]
 
     # read
-    cls, cx, cy, bw, bh, kpts = read_yolo_pose(txt_path)
+    cls, cx, cy, bw, bh, kpts = split_text.read_yolo_pose(txt_path)
 
     # denormalize
-    cx, cy, bw, bh, keypoints = denormalize(cx, cy, bw, bh, kpts, w, h)
+    cx, cy, bw, bh, keypoints = split_text.denormalize(cx, cy, bw, bh, kpts, w, h)
 
     # split LEFT
-    cx, cy, bw, bh, keypoints = split_left_yolo(cx, cy, bw, bh, keypoints, split_x)
+    cx, cy, bw, bh, keypoints = split_text.split_left_yolo(cx, cy, bw, bh, keypoints, split_x)
 
     # normalize
-    cx, cy, bw, bh, kpts_norm = normalize_left(cx, cy, bw, bh, keypoints, split_x, h)
+    cx, cy, bw, bh, kpts_norm = split_text.normalize_left(cx, cy, bw, bh, keypoints, split_x, h)
 
     # save
-    save_yolo_pose(cls, cx, cy, bw, bh, kpts_norm, out_path)
+    split_text.save_yolo_pose(cls, cx, cy, bw, bh, kpts_norm, out_path)
 
 
-def read_yolo_pose(path):
-    with open(path, "r") as f:
-        line = f.readline().strip().split()
+@magicgui(call_button='txt file for right split images')
+def widget_split_right_text():
+    filenames = natsorted(glob.glob(IM_PATH))
+    for fn in filenames:
+        img = imread(fn)
+        base = os.path.basename(fn)
 
-    cls = int(line[0])
-    cx, cy, bw, bh = map(float, line[1:5])
+        txt_path = os.path.join(PATH_FOLDER, "labels", "train", base.replace(".png", ".txt"))
 
-    kpts = list(map(float, line[5:]))
+        split_x = get_split_position(img, base)
 
-    return cls, cx, cy, bw, bh, kpts
+        out_path = os.path.join(PATH_FOLDER, "labels", "train",f"right_{base.replace('.png','.txt')}")
+        process_right_from_txt(txt_path, img, split_x, out_path)
 
-def denormalize(cx, cy, bw, bh, kpts, w, h):
-    cx *= w
-    cy *= h
-    bw *= w
-    bh *= h
+    print("✅ RIGHT labels updated from existing YOLO")
 
-    keypoints = []
-    for i in range(0, len(kpts), 3):
-        x = kpts[i] * w
-        y = kpts[i+1] * h
-        v = kpts[i+2]
-        keypoints.append([x, y, v])
+def process_right_from_txt(txt_path, img, split_x, out_path):
+    h, w = img.shape[:2]
 
-    return cx, cy, bw, bh, keypoints
+    # read
+    cls, cx, cy, bw, bh, kpts = split_text.read_yolo_pose(txt_path)
 
-def split_left_yolo(cx, cy, bw, bh, keypoints, split_x):
-    # bounding box corners
-    x1 = cx - bw/2
-    x2 = cx + bw/2
+    # denormalize
+    cx, cy, bw, bh, keypoints = split_text.denormalize(cx, cy, bw, bh, kpts, w, h)
 
-    # clip to LEFT
-    x1 = max(0, x1)
-    x2 = min(split_x, x2)
+    # split LEFT
+    cx, cy, bw, bh, keypoints = split_text.split_right_yolo(cx, cy, bw, bh, keypoints, split_x, w)
 
-    new_bw = x2 - x1
-    new_cx = (x1 + x2) / 2
+    # normalize
+    cx, cy, bw, bh, kpts_norm = split_text.normalize_right(cx, cy, bw, bh, keypoints, split_x, w, h)
 
-    # filter keypoints
-    new_kpts = []
-    for x, y, v in keypoints:
-        if x < split_x and not np.isnan(x):
-            new_kpts.append([x, y, v])
-        else:
-            new_kpts.append([0, 0, 0])  # YOLO expects placeholder
-
-    return new_cx, cy, new_bw, bh, new_kpts
-
-def normalize_left(cx, cy, bw, bh, keypoints, split_x, h):
-    cx /= split_x
-    bw /= split_x
-    cy /= h
-    bh /= h
-
-    kpts_norm = []
-    for x, y, v in keypoints:
-        if v == 0:
-            kpts_norm.extend([0, 0, 0])
-        else:
-            kpts_norm.extend([x / split_x, y / h, v])
-
-    return cx, cy, bw, bh, kpts_norm
-
-def save_yolo_pose(cls, cx, cy, bw, bh, kpts, path):
-    line = f"{cls} {cx} {cy} {bw} {bh} " + " ".join(map(str, kpts))
-    with open(path, "w") as f:
-        f.write(line + "\n")
+    # save
+    split_text.save_yolo_pose(cls, cx, cy, bw, bh, kpts_norm, out_path)
 
 
 # '''

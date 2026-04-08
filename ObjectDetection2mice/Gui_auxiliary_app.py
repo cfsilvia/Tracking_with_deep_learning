@@ -54,9 +54,10 @@ class Gui_auxiliary_app(tk.Tk):
       video_output = os.path.join(dir, filename + "_with_landmarks.avi")
       config = {
         "type_experiment" : "Blind moles from the side", #options: Mice , Blind moles from the side , Blind moles from the top
-        "file_model" : ["C:/LabSoftware/Tracking_with_deep_learning/models/yoloBMR_left_BMR_combined_videos_07.07.242/weights/best.pt","C:/LabSoftware/Tracking_with_deep_learning/models/yoloBMR_right_BMR_combined_videos_26.06.242/weights/best.pt"],
+        "file_model" : ["C:/LabSoftware/Tracking_with_deep_learning/models/BM_pose_2026_yolo26l/weights/best.pt"],
         "video_path" : movie_path,
-        "video_output" : video_output 
+        "video_output" : video_output,
+        "x_divider" : 808, #crop the video in x direction (e.g. 100 will crop 100 pixels from the left and 100 pixels from the right)
     }
      # Save dictionary as YAML file
       with open(file, "w", encoding="utf-8") as f:
